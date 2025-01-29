@@ -9,12 +9,14 @@ import (
 )
 
 func main() {
-	// Initialize configuration and logger
+	// Connect to Redis
+	config.ConnectRedis()
 	config.LoadEnv()
 	utils.SetupLogger()
 
-	// Set up HTTP server and routes
+	// API Endpoints
 	http.HandleFunc("/api/v1/flights", controllers.SearchFlightsHandler)
+	http.HandleFunc("/ws/live-updates", controllers.LiveFlightUpdates)
 
 	port := config.GetConfig("PORT", "8080")
 	utils.Logger.Info(fmt.Sprintf("Server running on http://localhost:%s", port))
