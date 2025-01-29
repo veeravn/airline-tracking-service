@@ -23,7 +23,7 @@ func LiveFlightUpdates(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		flightData, err := services.FetchLiveFlights("", "", "", "", 1, 5)
+		flightData, err := services.FetchFilteredFlights("", "", "", "", 1, 5)
 		if err != nil {
 			fmt.Println("Error fetching live flights:", err)
 			break

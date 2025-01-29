@@ -27,7 +27,7 @@ func SearchFlightsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch data from the service
-	flights, err := services.FetchLiveFlights(flightNumber, airline, departure, arrival, page, pageSize)
+	flights, err := services.FetchFilteredFlights(flightNumber, airline, departure, arrival, page, pageSize)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error fetching live flights: %s", err), http.StatusInternalServerError)
 		return
