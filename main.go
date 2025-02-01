@@ -3,7 +3,6 @@ package main
 import (
 	"airline-tracking-service/config"
 	"airline-tracking-service/controllers"
-	"airline-tracking-service/utils"
 	"fmt"
 	"net/http"
 )
@@ -11,14 +10,12 @@ import (
 func main() {
 	// Connect to Redis
 	config.ConnectRedis()
-	config.LoadEnv()
-	utils.SetupLogger()
 
 	// API Endpoints
-	http.HandleFunc("/api/v1/flights", controllers.SearchFlightsHandler)
-	http.HandleFunc("/ws/live-updates", controllers.LiveFlightUpdates)
+	http.HandleFunc("/api/v1/live-flights", controllers.LiveFlightsHandler)
+	http.HandleFunc("/ws/live-updates", controllers.LiveFlightUpdates) // WebSocket route
 
-	port := config.GetConfig("PORT", "8080")
-	utils.Logger.Info(fmt.Sprintf("Server running on http://localhost:%s", port))
+	port := "8080"
+	fmt.Println("Server running on http://localhost:" + port)
 	http.ListenAndServe(":"+port, nil)
 }
