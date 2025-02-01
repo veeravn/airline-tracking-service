@@ -24,29 +24,55 @@ func NewWebSocketHandler(flightService services.FlightServiceInterface) *WebSock
 	return &WebSocketHandler{FlightService: flightService}
 }
 
-// Handle WebSocket connections for real-time updates
+// WebSocket connection handler for live flight updates
 func (wh *WebSocketHandler) LiveFlightUpdates(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("WebSocket upgrade failed:", err)
+		http.Error(w, "Failed to upgrade WebSocket", http.StatusInternalServerError)
 		return
 	}
 	defer conn.Close()
 
-	// Continuously send flight updates to the client
+	fmt.Println("Client connected to WebSocket")
+
+	// Set WebSocket read deadline to detect inactivity
+	conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+
+	// Keep connection alive by resetting deadline on each pong message
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		return nil
+	})
+
 	for {
+		// Fetch live flight data
 		flights, err := wh.FlightService.FetchLiveFlightsWithLocation()
 		if err != nil {
 			fmt.Println("Error fetching live flights:", err)
 			break
 		}
 
+		// Set write deadline to avoid infinite blocking
+		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
 		// Send flight data to the WebSocket client
-		if err := conn.WriteJSON(flights); err != nil {
-			fmt.Println("Error sending data over WebSocket:", err)
+		err = conn.WriteJSON(flights)
+		if err != nil {
+			fmt.Println("WebSocket Error (sending data):", err)
 			break
 		}
 
-		time.Sleep(10 * time.Second) // Update clients every 10 seconds
+		// Send a ping to check if client is still connected
+		err = conn.WriteMessage(websocket.PingMessage, nil)
+		if err != nil {
+			fmt.Println("Client disconnected:", err)
+			break
+		}
+
+		// Wait before sending the next update
+		time.Sleep(10 * time.Second)
 	}
+
+	fmt.Println("WebSocket connection closed")
 }

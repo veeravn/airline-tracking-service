@@ -7,22 +7,40 @@ import (
 	"net/http"
 )
 
-// Create a variable to hold the flight service instance
-var flightService services.FlightServiceInterface = services.FlightService{}
-
-// Function to set a custom flight service (Used for testing)
-func SetFlightService(service services.FlightServiceInterface) {
-	flightService = service
+// FlightController struct to inject FlightService
+type FlightController struct {
+	FlightService services.FlightServiceInterface
 }
 
-// LiveFlightsHandler uses the injected service
-func LiveFlightsHandler(w http.ResponseWriter, r *http.Request) {
-	flights, err := flightService.FetchLiveFlightsWithLocation()
+// Constructor for FlightController
+func NewFlightController(flightService services.FlightServiceInterface) *FlightController {
+	return &FlightController{FlightService: flightService}
+}
+
+// LiveFlightsHandler handles requests for real-time flights
+func (fc *FlightController) LiveFlightsHandler(w http.ResponseWriter, r *http.Request) {
+	// Fetch live flight data
+	flights, err := fc.FlightService.FetchLiveFlightsWithLocation()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error fetching live flights: %s", err), http.StatusInternalServerError)
+		fmt.Println("Error fetching live flights:", err)
 		return
 	}
 
+	// If no flights found, return a meaningful response
+	if len(flights) == 0 {
+		http.Error(w, "No live flights available", http.StatusNotFound)
+		fmt.Println("No live flights found")
+		return
+	}
+
+	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(flights)
+	w.WriteHeader(http.StatusOK)
+
+	// Send the flight data as JSON response
+	if err := json.NewEncoder(w).Encode(flights); err != nil {
+		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
+		fmt.Println("Error encoding JSON response:", err)
+	}
 }
