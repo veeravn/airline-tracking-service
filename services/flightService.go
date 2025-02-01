@@ -8,15 +8,20 @@ import (
 	"os"
 )
 
-// FlightData struct
+type AirportInfo struct {
+	IATA string `json:"iata"`
+}
+
 type FlightData struct {
-	FlightNumber string  `json:"flight_number"`
-	Airline      string  `json:"airline"`
-	Departure    string  `json:"departure"`
-	Arrival      string  `json:"arrival"`
-	Status       string  `json:"status"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	FlightNumber string `json:"flight_number"`
+	Airline      struct {
+		Name string `json:"name"`
+	} `json:"airline"`
+	Departure AirportInfo `json:"departure"`
+	Arrival   AirportInfo `json:"arrival"`
+	Status    string      `json:"status"`
+	Latitude  float64     `json:"latitude"`
+	Longitude float64     `json:"longitude"`
 }
 
 // Define an interface to allow mocking
@@ -47,6 +52,7 @@ func (fs FlightService) FetchLiveFlightsWithLocation() ([]FlightData, error) {
 	var result struct {
 		Data []FlightData `json:"data"`
 	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
