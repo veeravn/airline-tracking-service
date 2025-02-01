@@ -11,11 +11,21 @@ import (
 
 // WebSocket upgrader settings
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true }, // Allow all origins (Modify for security)
+	CheckOrigin: func(r *http.Request) bool { return true }, // Allow all origins (modify for security)
 }
 
 // WebSocket handler for live flight updates
-func LiveFlightUpdates(w http.ResponseWriter, r *http.Request) {
+type WebSocketHandler struct {
+	FlightService services.FlightServiceInterface
+}
+
+// Constructor function for WebSocketHandler
+func NewWebSocketHandler(flightService services.FlightServiceInterface) *WebSocketHandler {
+	return &WebSocketHandler{FlightService: flightService}
+}
+
+// Handle WebSocket connections for real-time updates
+func (wh *WebSocketHandler) LiveFlightUpdates(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("WebSocket upgrade failed:", err)
@@ -25,7 +35,7 @@ func LiveFlightUpdates(w http.ResponseWriter, r *http.Request) {
 
 	// Continuously send flight updates to the client
 	for {
-		flights, err := services.FetchLiveFlightsWithLocation()
+		flights, err := wh.FlightService.FetchLiveFlightsWithLocation()
 		if err != nil {
 			fmt.Println("Error fetching live flights:", err)
 			break

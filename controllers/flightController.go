@@ -7,9 +7,17 @@ import (
 	"net/http"
 )
 
-// LiveFlightsHandler handles requests for real-time flights with location
+// Create a variable to hold the flight service instance
+var flightService services.FlightServiceInterface = services.FlightService{}
+
+// Function to set a custom flight service (Used for testing)
+func SetFlightService(service services.FlightServiceInterface) {
+	flightService = service
+}
+
+// LiveFlightsHandler uses the injected service
 func LiveFlightsHandler(w http.ResponseWriter, r *http.Request) {
-	flights, err := services.FetchLiveFlightsWithLocation()
+	flights, err := flightService.FetchLiveFlightsWithLocation()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error fetching live flights: %s", err), http.StatusInternalServerError)
 		return

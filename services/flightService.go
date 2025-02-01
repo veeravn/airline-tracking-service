@@ -19,14 +19,27 @@ type FlightData struct {
 	Longitude    float64 `json:"longitude"`
 }
 
-// Fetch live flight data from API
-func FetchLiveFlightsWithLocation() ([]FlightData, error) {
+// Define an interface to allow mocking
+type FlightServiceInterface interface {
+	FetchLiveFlightsWithLocation() ([]FlightData, error)
+}
+
+// Real implementation of FlightService
+type FlightService struct{}
+
+// FetchLiveFlightsWithLocation fetches real-time flight data
+func (fs FlightService) FetchLiveFlightsWithLocation() ([]FlightData, error) {
 	apiKey := os.Getenv("AVIATIONSTACK_API_KEY")
+	if apiKey == "" {
+		log.Println("API key is missing.")
+		return nil, fmt.Errorf("API key is missing")
+	}
+
 	url := fmt.Sprintf("http://api.aviationstack.com/v1/flights?access_key=%s", apiKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error fetching flight data:", err)
+		log.Println("Error making request:", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
