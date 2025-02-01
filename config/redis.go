@@ -11,8 +11,13 @@ import (
 var RedisClient *redis.Client
 
 func ConnectRedis() {
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "redis:6379" // Default to Docker service name
+	}
+
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_ADDR"),
+		Addr: redisAddr,
 		DB:   0,
 	})
 
@@ -20,6 +25,6 @@ func ConnectRedis() {
 	if err != nil {
 		fmt.Println("Error connecting to Redis:", err)
 	} else {
-		fmt.Println("Connected to Redis")
+		fmt.Println("Connected to Redis at", redisAddr)
 	}
 }
