@@ -129,43 +129,49 @@ func (fs FlightService) FetchLiveFlightsWithLocation() ([]FlightData, error) {
 }
 
 // SearchFlights fetches flights based on search parameters
+var baseURL = "http://api.aviationstack.com/v1/flights"
+
+// Fetch flights based on search parameters
 func (fs FlightService) SearchFlights(params map[string]string) ([]FlightData, error) {
 	apiKey := os.Getenv("AVIATIONSTACK_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key is missing")
 	}
 
-	// Construct API URL with query parameters
-	baseURL := "http://api.aviationstack.com/v1/flights"
+	// ✅ Use `baseURL`, which can be overridden in tests
 	queryParams := url.Values{}
 	queryParams.Set("access_key", apiKey)
 
-	// Add search parameters dynamically
 	for key, value := range params {
 		if value != "" {
 			queryParams.Set(key, value)
 		}
 	}
 
-	url := fmt.Sprintf("%s?%s", baseURL, queryParams.Encode())
+	apiURL := fmt.Sprintf("%s?%s", baseURL, queryParams.Encode())
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch data: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Read the response body
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body) // Read response to include in error
+		return nil, fmt.Errorf("API error: %s (status: %d)", string(body), resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Print the raw response for debugging
-	fmt.Println("API Response:", string(body))
+	fmt.Println("API Response:", string(body)) // ✅ Debugging log
 
-	// Unmarshal into APIResponse struct
-	var result APIResponse
+	var result struct {
+		Data []FlightData `json:"data"`
+	}
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON: %w", err)
 	}

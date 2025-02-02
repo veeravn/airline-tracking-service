@@ -59,7 +59,7 @@ func TestSearchFlights(t *testing.T) {
 	os.Setenv("AVIATIONSTACK_API_KEY", "test_api_key")
 
 	// Override the base API URL
-	baseURL := mockSrv.URL
+	baseURL = mockSrv.URL
 
 	flightService := FlightService{}
 
