@@ -44,3 +44,26 @@ func (fc *FlightController) LiveFlightsHandler(w http.ResponseWriter, r *http.Re
 		fmt.Println("Error encoding JSON response:", err)
 	}
 }
+
+// SearchFlightsHandler processes flight search requests
+func (fc *FlightController) SearchFlightsHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	params := map[string]string{
+		"flight_iata":   r.URL.Query().Get("flight_iata"),
+		"airline_iata":  r.URL.Query().Get("airline_iata"),
+		"dep_iata":      r.URL.Query().Get("dep_iata"),
+		"arr_iata":      r.URL.Query().Get("arr_iata"),
+		"flight_status": r.URL.Query().Get("flight_status"),
+	}
+
+	// Fetch filtered flights
+	flights, err := fc.FlightService.SearchFlights(params)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error fetching flights: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(flights)
+}

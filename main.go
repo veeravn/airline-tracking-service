@@ -8,20 +8,36 @@ import (
 	"net/http"
 )
 
+// Enable CORS Middleware
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow frontend to access API
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
-	// Connect to Redis
 	config.ConnectRedis()
 
-	// Create the flight service and controllers
 	flightService := services.FlightService{}
 	flightController := controllers.NewFlightController(flightService)
 	webSocketHandler := controllers.NewWebSocketHandler(flightService)
 
-	// API Endpoints
-	http.HandleFunc("/api/v1/live-flights", flightController.LiveFlightsHandler)
-	http.HandleFunc("/ws/live-updates", webSocketHandler.LiveFlightUpdates)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/live-flights", flightController.LiveFlightsHandler)
+	mux.HandleFunc("/api/v1/search-flights", flightController.SearchFlightsHandler)
+	mux.HandleFunc("/ws/live-updates", webSocketHandler.LiveFlightUpdates)
+
+	// Apply CORS middleware
+	handler := enableCORS(mux)
 
 	port := "8080"
 	fmt.Println("Server running on http://localhost:" + port)
-	http.ListenAndServe(":"+port, nil)
+	http.ListenAndServe(":"+port, handler)
 }

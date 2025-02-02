@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 )
 
 // FlightServiceInterface for dependency injection
 type FlightServiceInterface interface {
 	FetchLiveFlightsWithLocation() ([]FlightData, error)
+	SearchFlights(params map[string]string) ([]FlightData, error)
 }
 
 // FlightService struct that implements FlightServiceInterface
@@ -124,4 +126,49 @@ func (fs FlightService) FetchLiveFlightsWithLocation() ([]FlightData, error) {
 
 	// Return only valid flight data
 	return validFlights, nil
+}
+
+// SearchFlights fetches flights based on search parameters
+func (fs FlightService) SearchFlights(params map[string]string) ([]FlightData, error) {
+	apiKey := os.Getenv("AVIATIONSTACK_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key is missing")
+	}
+
+	// Construct API URL with query parameters
+	baseURL := "http://api.aviationstack.com/v1/flights"
+	queryParams := url.Values{}
+	queryParams.Set("access_key", apiKey)
+
+	// Add search parameters dynamically
+	for key, value := range params {
+		if value != "" {
+			queryParams.Set(key, value)
+		}
+	}
+
+	url := fmt.Sprintf("%s?%s", baseURL, queryParams.Encode())
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Print the raw response for debugging
+	fmt.Println("API Response:", string(body))
+
+	// Unmarshal into APIResponse struct
+	var result APIResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode JSON: %w", err)
+	}
+
+	return result.Data, nil
 }
