@@ -8,47 +8,62 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-// MockFlightService implements FlightServiceInterface for testing
-type MockFlightService struct{}
-
-// Mock response data
-func (m MockFlightService) FetchLiveFlightsWithLocation() ([]services.FlightData, error) {
-	return []services.FlightData{
-		{
-			FlightNumber: "AA123",
-			Airline:      "American Airlines",
-			Departure:    "JFK",
-			Arrival:      "LAX",
-			Status:       "On Time",
-			Latitude:     40.6413,
-			Longitude:    -73.7781,
-		},
-	}, nil
+// ✅ Mock Flight Service that implements `FlightServiceInterface`
+type MockFlightService struct {
+	mock.Mock
 }
 
-// Test the LiveFlightsHandler API response
-func TestLiveFlightsHandler(t *testing.T) {
-	// Inject the mock service into the controller
-	SetFlightService(MockFlightService{})
+// ✅ Mock `SearchFlights()` for flight search tests
+func (m *MockFlightService) SearchFlights(params map[string]string) ([]services.FlightData, error) {
+	args := m.Called(params)
+	return args.Get(0).([]services.FlightData), args.Error(1)
+}
 
-	// Create a new HTTP request
-	req, _ := http.NewRequest("GET", "/api/v1/live-flights", nil)
-	rr := httptest.NewRecorder()
+// ✅ Mock `FetchLiveFlightsWithLocation()` to match `FlightServiceInterface`
+func (m *MockFlightService) FetchLiveFlightsWithLocation() ([]services.FlightData, error) {
+	args := m.Called()
+	return args.Get(0).([]services.FlightData), args.Error(1)
+}
 
-	// Call the handler
-	handler := http.HandlerFunc(LiveFlightsHandler)
-	handler.ServeHTTP(rr, req)
+func TestSearchFlightsHandler(t *testing.T) {
+	mockService := new(MockFlightService)
+	flightController := NewFlightController(mockService)
 
-	// Check HTTP status
-	assert.Equal(t, http.StatusOK, rr.Code)
+	// ✅ Mock flight data
+	mockFlights := []services.FlightData{
+		{
+			FlightStatus: "active",
+			Departure:    services.FlightData{}.Departure,
+			Arrival:      services.FlightData{}.Arrival,
+			Airline:      services.FlightData{}.Airline,
+			Flight:       services.FlightData{}.Flight,
+		},
+	}
 
-	// Parse response body
-	var flights []services.FlightData
-	json.Unmarshal(rr.Body.Bytes(), &flights)
+	// ✅ Set test data
+	mockFlights[0].Departure.Airport = "Soekarno-Hatta International"
+	mockFlights[0].Departure.IATA = "CGK"
+	mockFlights[0].Arrival.Airport = "Babullah"
+	mockFlights[0].Arrival.IATA = "TTE"
+	mockFlights[0].Airline.Name = "Batik Air"
+	mockFlights[0].Airline.IATA = "ID"
+	mockFlights[0].Flight.Number = "6140"
+	mockFlights[0].Flight.IATA = "ID6140"
 
-	// Validate response data
-	assert.Equal(t, "AA123", flights[0].FlightNumber)
-	assert.Equal(t, "JFK", flights[0].Departure)
+	mockService.On("SearchFlights", mock.Anything).Return(mockFlights, nil)
+
+	req := httptest.NewRequest("GET", "/api/v1/search-flights?flight_iata=ID6140", nil)
+	w := httptest.NewRecorder()
+	flightController.SearchFlightsHandler(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response []services.FlightData
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Len(t, response, 1)
+	assert.Equal(t, "ID6140", response[0].Flight.IATA)
 }
